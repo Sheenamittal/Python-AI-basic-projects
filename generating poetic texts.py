@@ -36,92 +36,107 @@ index_to_char = {i: c for i, c in enumerate(characters)}
 SEQ_LENGTH = 40
 STEP_SIZE = 3
 
-# # Prepare the input and output sequences
-# sentences = []
-# next_chars = []
-# for i in range(0, len(text) - SEQ_LENGTH, STEP_SIZE):
-#     sentences.append(text[i: i + SEQ_LENGTH])
-#     next_chars.append(text[i + SEQ_LENGTH])
+"""
+# Prepare the input and output sequences
+sentences = []
+next_chars = []
+for i in range(0, len(text) - SEQ_LENGTH, STEP_SIZE):
+    sentences.append(text[i: i + SEQ_LENGTH])
+    next_chars.append(text[i + SEQ_LENGTH])
 
-# # Debugging: Print the number of sequences
-# print(f'Number of sequences: {len(sentences)}')
+# Debugging: Print the number of sequences
+print(f'Number of sequences: {len(sentences)}')
 
-# # Initialize the input and output arrays
-# x = np.zeros((len(sentences), SEQ_LENGTH, len(characters)), dtype=np.bool_)
-# y = np.zeros((len(sentences), len(characters)), dtype=np.bool_)
+# Initialize the input and output arrays
+x = np.zeros((len(sentences), SEQ_LENGTH, len(characters)), dtype=np.bool_)
+y = np.zeros((len(sentences), len(characters)), dtype=np.bool_)
 
-# # Populate the input and output arrays
-# for i, sentence in enumerate(sentences):
-#     for t, character in enumerate(sentence):
-#         x[i, t, char_to_index[character]] = 1
-#     y[i, char_to_index[next_chars[i]]] = 1
+# Populate the input and output arrays
+for i, sentence in enumerate(sentences):
+    for t, character in enumerate(sentence):
+        x[i, t, char_to_index[character]] = 1
+    y[i, char_to_index[next_chars[i]]] = 1
 
-# # Debugging: Print the shape of x and y
-# print(f'Shape of x: {x.shape}')
-# print(f'Shape of y: {y.shape}')
+# Debugging: Print the shape of x and y
+print(f'Shape of x: {x.shape}')
+print(f'Shape of y: {y.shape}')
 
-# # Check for non-zero entries in x and y
-# print(f'Non-zero entries in x: {np.count_nonzero(x)}')
-# print(f'Non-zero entries in y: {np.count_nonzero(y)}')
+# Check for non-zero entries in x and y
+print(f'Non-zero entries in x: {np.count_nonzero(x)}')
+print(f'Non-zero entries in y: {np.count_nonzero(y)}')
 
-# # Build the model
-# model = Sequential()
-# model.add(LSTM(128, input_shape=(SEQ_LENGTH, len(characters))))
-# model.add(Dense(len(characters)))
-# model.add(Activation('softmax'))
+# Build the model
+model = Sequential()
+model.add(LSTM(128, input_shape=(SEQ_LENGTH, len(characters))))
+model.add(Dense(len(characters)))
+model.add(Activation('softmax'))
 
-# # Compile the model
-# model.compile(loss='categorical_crossentropy', optimizer=RMSprop(learning_rate=0.01))
+# Compile the model
+model.compile(loss='categorical_crossentropy', optimizer=RMSprop(learning_rate=0.01))
 
-# # Train the model
-# try:
-#     model.fit(x, y, batch_size=256, epochs=4)
-# except Exception as e:
-#     print(f"An error occurred during training: {e}")
+# Train the model
+try:
+    model.fit(x, y, batch_size=256, epochs=4)
+except Exception as e:
+    print(f"An error occurred during training: {e}")
 
-# # Save the model with a valid extension
-# model.save('textgenerator.keras')
+# Save the model with a valid extension
+model.save('textgenerator.keras')
+"""
 
-
+# Load the model
 model = tf.keras.models.load_model('textgenerator.keras')
 
 def sample(preds, temperature=1.0):
+    """
+    Sample an index from the predicted probabilities with temperature adjustment.
+
+    Args:
+    preds (np.array): The predicted probabilities.
+    temperature (float): The temperature to use for sampling.
+
+    Returns:
+    int: The index of the sampled character.
+    """
     preds = np.asarray(preds).astype('float64')
     preds = np.log(preds) / temperature
     exp_preds = np.exp(preds)
-    preds = exp_preds/np.sum(exp_preds)
-    probas = np.random.multinomial(1,preds,1)
+    preds = exp_preds / np.sum(exp_preds)
+    probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
 
 def generate_text(length, temperature):
+    """
+    Generate text of a given length and temperature using the trained model.
+
+    Args:
+    length (int): The length of the text to generate.
+    temperature (float): The temperature to use for sampling.
+
+    Returns:
+    str: The generated text.
+    """
     start_index = random.randint(0, len(text) - SEQ_LENGTH - 1)
     generated = ''
-    sentence = text[start_index: start_index+SEQ_LENGTH]
-    generated +=sentence
+    sentence = text[start_index: start_index + SEQ_LENGTH]
+    generated += sentence
+
     for i in range(length):
         x = np.zeros((1, SEQ_LENGTH, len(characters)))
         for t, character in enumerate(sentence):
-            x[0,t,char_to_index[character]]=1
-        
+            x[0, t, char_to_index[character]] = 1
+
         predictions = model.predict(x, verbose=0)[0]
         next_index = sample(predictions, temperature)
         next_character = index_to_char[next_index]
-        
+
         generated += next_character
-        sentence = sentence[1:]+next_character
+        sentence = sentence[1:] + next_character
+
     return generated
 
-print('---------------0.2--------------')
-print(generate_text(300,0.2))
-print('---------------0.4--------------')
-print(generate_text(300,0.4))
-print('---------------0.6--------------')
-print(generate_text(300,0.6))
-print('---------------0.8--------------')
-print(generate_text(300,0.8))
-print('---------------1--------------')
-print(generate_text(300,1.0))
-
-
-        
-        
+# Generate text with different temperatures and print the results
+temperatures = [0.2, 0.4, 0.6, 0.8, 1.0]
+for temp in temperatures:
+    print(f'---------------{temp}--------------')
+    print(generate_text(300, temp))
